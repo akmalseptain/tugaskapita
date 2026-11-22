@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Circuit & OTA Simulator — Smart Parking ESP32</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { margin: 0; background: #f0f9ff; color: #0f172a; padding: 20px; }
+    .container { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 1.35fr 0.9fr; gap: 20px; }
+    .card { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 20px; padding: 20px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06); }
+    .header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #0ea5e9, #14b8a6); color: #fff; border: none; }
+    .badge { padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; background: rgba(255,255,255,0.22); }
+    .board-grid { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 16px; align-items: center; margin-top: 14px; }
+    .esp-box { background: #1e293b; color: #f8fafc; border-radius: 16px; padding: 18px; text-align: center; border: 3px solid #38bdf8; }
+    .lcd { background: #14532d; color: #86efac; font-family: 'Courier New', monospace; font-weight: bold; font-size: 18px; padding: 14px 16px; border-radius: 10px; border: 4px solid #334155; letter-spacing: 1px; min-height: 76px; display: flex; flex-direction: column; justify-content: center; }
+    .servo-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 14px; padding: 14px; text-align: center; }
+    .servo-arm { width: 80px; height: 12px; background: #f59e0b; border-radius: 6px; margin: 18px auto; transform-origin: 10px 6px; transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .leds { display: flex; justify-content: center; gap: 18px; margin-top: 12px; }
+    .led { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #475569; transition: all 0.2s; }
+    .led.green-off { background: #14532d; }
+    .led.green-on { background: #22c55e; box-shadow: 0 0 18px #22c55e; }
+    .led.red-off { background: #450a0a; }
+    .led.red-on { background: #ef4444; box-shadow: 0 0 18px #ef4444; }
+    .btn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+    button { border: none; border-radius: 12px; padding: 11px 12px; font-size: 13px; font-weight: 700; cursor: pointer; transition: transform 0.1s, opacity 0.2s; }
+    button:active { transform: scale(0.97); }
+    .btn-green { background: #10b981; color: #fff; }
+    .btn-red { background: #ef4444; color: #fff; }
+    .btn-amber { background: #f59e0b; color: #fff; }
+    .btn-slot { background: #e0f2fe; color: #0369a1; border: 2px solid #38bdf8; }
+    .btn-slot.full { background: #fee2e2; color: #b91c1c; border-color: #ef4444; }
+    .btn-ota { background: linear-gradient(135deg, #0284c7, #0d9488); color: #fff; width: 100%; padding: 12px; font-size: 14px; }
+    .serial { background: #0f172a; color: #38bdf8; font-family: 'Courier New', monospace; font-size: 13px; padding: 14px; border-radius: 12px; height: 220px; overflow-y: auto; line-height: 1.5; }
+    .progress-wrap { width: 100%; height: 14px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin: 10px 0; }
+    .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #0ea5e9, #10b981); transition: width 0.15s; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card header">
+      <div>
+        <h1 style="margin:0; font-size:22px;">⚡ Live Circuit &amp; OTA Test Bench — Smart Parking ESP32</h1>
+        <p style="margin:4px 0 0; font-size:13px; opacity:0.92;">Simulasi Interaktif Skema Pinout KiCad/Wokwi + Pengujian Firmware Over-The-Air (v1.0 → v2.0)</p>
+      </div>
+      <div id="fwBadge" class="badge">Firmware: v1.0 (Dasar)</div>
+    </div>
+
+    <!-- Left: Interactive Hardware Circuit -->
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="margin:0; font-size:16px;">🔌 Simulasi Perangkat Keras (ESP32 Pinout Sesuai KiCad)</h2>
+        <span id="buzzerStatus" style="font-size:12px; font-weight:700; color:#64748b;">🔇 Buzzer: OFF</span>
+      </div>
+
+      <div class="board-grid">
+        <!-- Entry Gate -->
+        <div class="servo-box">
+          <div style="font-size:12px; font-weight:700; color:#0369a1;">ENTRY GATE (GPIO 32)</div>
+          <div id="servoEntryArm" class="servo-arm" style="transform: rotate(0deg);"></div>
+          <div id="servoEntryText" style="font-size:12px; font-weight:700;">Tertutup (0°)</div>
+          <div class="leds">
+            <div>
+              <div id="ledGreen" class="led green-off"></div>
+              <div style="font-size:10px; margin-top:4px;">GPIO12</div>
+            </div>
+            <div>
+              <div id="ledRed" class="led red-off"></div>
+              <div style="font-size:10px; margin-top:4px;">GPIO13</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ESP32 + LCD -->
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div class="lcd">
+            <div id="lcdLine1">FW:v1.0 SmartPrk</div>
+            <div id="lcdLine2">Free Slot: 3/3</div>
+          </div>
+          <div class="esp-box">
+            <div style="font-weight:800; font-size:15px; color:#38bdf8;">ESP32 DevKit V1</div>
+            <div style="font-size:11px; color:#94a3b8; margin-top:4px;">Wi-Fi: Connected (192.168.1.50)<br>I2C: GPIO 21/22 • SPI: GPIO 18/19/23</div>
+          </div>
+        </div>
+
+        <!-- Exit Gate -->
+        <div class="servo-box">
+          <div style="font-size:12px; font-weight:700; color:#b45309;">EXIT GATE (GPIO 4)</div>
+          <div id="servoExitArm" class="servo-arm" style="transform: rotate(0deg); background:#0ea5e9;"></div>
+          <div id="servoExitText" style="font-size:12px; font-weight:700;">Tertutup (0°)</div>
+          <div style="font-size:11px; color:#64748b; margin-top:16px;">RFID2: GPIO 5 / 16<br>IR Exit: GPIO 34</div>
+        </div>
+      </div>
+
+      <div class="btn-grid">
+        <button id="btnRfidOk" class="btn-green" onclick="tapRfid(true)">💳 Tap RFID Valid (GPIO 33)</button>
+        <button id="btnRfidDeny" class="btn-red" onclick="tapRfid(false)">🚫 Tap RFID Invalid (GPIO 35)</button>
+        <button id="btnExitGate" class="btn-amber" onclick="openExitGate()">🚗 Exit Gate (GPIO 34)</button>
+        <button id="btnSlot1" class="btn-slot" onclick="toggleSlot(0)">Slot 1 (GPIO 27): KOSONG</button>
+        <button id="btnSlot2" class="btn-slot" onclick="toggleSlot(1)">Slot 2 (GPIO 26): KOSONG</button>
+        <button id="btnSlot3" class="btn-slot" onclick="toggleSlot(2)">Slot 3 (GPIO 25): KOSONG</button>
+      </div>
+    </div>
+
+    <!-- Right: OTA Panel + Serial Monitor -->
+    <div style="display:flex; flex-direction:column; gap:20px;">
+      <div class="card">
+        <h2 style="margin:0 0 8px; font-size:16px;">📡 AsyncElegantOTA Web Update (Port 80)</h2>
+        <div style="font-size:12px; color:#475569; margin-bottom:10px;">
+          Endpoint: <code>http://192.168.1.50/update</code><br>
+          Target Binary: <code>SmartParking_v2.0_FullLock.ino.bin</code>
+        </div>
+        <div class="progress-wrap"><div id="otaProgress" class="progress-fill"></div></div>
+        <div id="otaMsg" style="font-size:12px; font-weight:600; color:#475569; margin-bottom:10px;">Status: Menunggu file .bin...</div>
+        <button id="btnFlashOta" class="btn-ota" onclick="flashOtaV2()">🚀 Upload &amp; Flash OTA Firmware v2.0</button>
+      </div>
+
+      <div class="card" style="flex:1;">
+        <h2 style="margin:0 0 10px; font-size:16px;">💻 Serial Monitor (115200 baud)</h2>
+        <div id="serialLog" class="serial">
+          [BOOT] ESP32 Smart Parking System v1.0 Ready.<br>
+          [WIFI] Connected to SSID: TP-Link_8320 | IP: 192.168.1.50<br>
+          [OTA] AsyncElegantOTA active on /update<br>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const slots = [false, false, false];
+    const slotGpios = [27, 26, 25];
+    let otaV2 = false;
+
+    function log(msg) {
+      const el = document.getElementById("serialLog");
+      el.innerHTML += msg + "<br>";
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function updateLcdDefault() {
+      const free = slots.filter(s => !s).length;
+      document.getElementById("lcdLine1").textContent = otaV2 ? "FW:v2.0 [OTA OK]" : "FW:v1.0 SmartPrk";
+      document.getElementById("lcdLine2").textContent = `Free Slot: ${free}/3`;
+    }
+
+    function toggleSlot(i) {
+      slots[i] = !slots[i];
+      const btn = document.getElementById(`btnSlot${i+1}`);
+      if (slots[i]) {
+        btn.classList.add("full");
+        btn.textContent = `Slot ${i+1} (GPIO ${slotGpios[i]}): TERISI`;
+      } else {
+        btn.classList.remove("full");
+        btn.textContent = `Slot ${i+1} (GPIO ${slotGpios[i]}): KOSONG`;
+      }
+      log(`[SENSOR] Slot ${i+1} -> ${slots[i] ? "TERISI" : "KOSONG"}`);
+      updateLcdDefault();
+    }
+
+    function tapRfid(valid) {
+      const allFull = slots.every(Boolean);
+      const ledG = document.getElementById("ledGreen");
+      const ledR = document.getElementById("ledRed");
+      const buz = document.getElementById("buzzerStatus");
+      const arm = document.getElementById("servoEntryArm");
+      const armTxt = document.getElementById("servoEntryText");
+
+      if (!valid) {
+        document.getElementById("lcdLine1").textContent = "Access Denied!";
+        document.getElementById("lcdLine2").textContent = "Invalid Card";
+        ledR.className = "led red-on";
+        buz.textContent = "🔊 Buzzer: BEEP (400Hz)";
+        buz.style.color = "#ef4444";
+        log("[RFID1] Kartu ditolak! LED Merah & Buzzer aktif.");
+        setTimeout(() => {
+          ledR.className = "led red-off";
+          buz.textContent = "🔇 Buzzer: OFF";
+          buz.style.color = "#64748b";
+          updateLcdDefault();
+        }, 1400);
+        return;
+      }
+
+      if (otaV2 && allFull) {
+        document.getElementById("lcdLine1").textContent = "Parking Full!";
+        document.getElementById("lcdLine2").textContent = "v2.0 Gate Locked";
+        ledR.className = "led red-on";
+        buz.textContent = "🔊 Buzzer: LOCK ALERT";
+        buz.style.color = "#f59e0b";
+        log("[GATE-v2.0] Semua slot penuh! Palang Entry dikunci otomatis.");
+        setTimeout(() => {
+          ledR.className = "led red-off";
+          buz.textContent = "🔇 Buzzer: OFF";
+          buz.style.color = "#64748b";
+          updateLcdDefault();
+        }, 1500);
+        return;
+      }
+
+      document.getElementById("lcdLine1").textContent = "Access Granted";
+      document.getElementById("lcdLine2").textContent = "Entry Gate Open";
+      ledG.className = "led green-on";
+      buz.textContent = "🔊 Buzzer: OK (1200Hz)";
+      buz.style.color = "#10b981";
+      arm.style.transform = "rotate(-90deg)";
+      armTxt.textContent = "Terbuka (90°)";
+      log("[RFID1] Kartu valid! Servo Entry terbuka 90°.");
+      setTimeout(() => {
+        arm.style.transform = "rotate(0deg)";
+        armTxt.textContent = "Tertutup (0°)";
+        ledG.className = "led green-off";
+        buz.textContent = "🔇 Buzzer: OFF";
+        buz.style.color = "#64748b";
+        updateLcdDefault();
+      }, 1600);
+    }
+
+    function openExitGate() {
+      const arm = document.getElementById("servoExitArm");
+      const armTxt = document.getElementById("servoExitText");
+      document.getElementById("lcdLine1").textContent = "Exit Gate Open";
+      document.getElementById("lcdLine2").textContent = "Thank You!";
+      arm.style.transform = "rotate(-90deg)";
+      armTxt.textContent = "Terbuka (90°)";
+      log("[RFID2] Kendaraan keluar. Servo Exit terbuka 90°.");
+      setTimeout(() => {
+        arm.style.transform = "rotate(0deg)";
+        armTxt.textContent = "Tertutup (0°)";
+        updateLcdDefault();
+      }, 1500);
+    }
+
+    function flashOtaV2() {
+      const bar = document.getElementById("otaProgress");
+      const msg = document.getElementById("otaMsg");
+      const badge = document.getElementById("fwBadge");
+      let p = 0;
+      msg.textContent = "Status: Mengunggah .bin via Wi-Fi...";
+      log("[OTA] Menerima file SmartParking_v2.0_FullLock.ino.bin...");
+      const t = setInterval(() => {
+        p += 10;
+        bar.style.width = p + "%";
+        if (p >= 100) {
+          clearInterval(t);
+          otaV2 = true;
+          msg.textContent = "✅ OTA Sukses! ESP32 auto-reboot ke v2.0.";
+          msg.style.color = "#10b981";
+          badge.textContent = "Firmware: v2.0 (Full-Slot Lock)";
+          log("[OTA] Flash selesai (100%). Rebooting ESP32 -> Firmware v2.0 aktif!");
+          updateLcdDefault();
+        }
+      }, 120);
+    }
+  </script>
+</body>
+</html>

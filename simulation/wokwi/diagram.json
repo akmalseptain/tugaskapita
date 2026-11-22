@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "author": "Smart Parking IoT ESP32 + OTA",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-lcd1602", "id": "lcd1", "top": -210, "left": -70, "attrs": { "pins": "i2c" } },
+    { "type": "wokwi-servo", "id": "servo_entry", "top": 20, "left": -260, "attrs": {} },
+    { "type": "wokwi-servo", "id": "servo_exit", "top": 20, "left": 240, "attrs": {} },
+    { "type": "wokwi-led", "id": "led_grn1", "top": 150, "left": -180, "attrs": { "color": "green", "label": "Entry OK" } },
+    { "type": "wokwi-led", "id": "led_red1", "top": 150, "left": -130, "attrs": { "color": "red", "label": "Entry Deny" } },
+    { "type": "wokwi-buzzer", "id": "buz1", "top": 145, "left": -250, "attrs": { "volume": "0.5" } },
+    { "type": "wokwi-pushbutton", "id": "btn_rfid_ok", "top": -110, "left": -220, "attrs": { "color": "green", "label": "Tap RFID Valid" } },
+    { "type": "wokwi-pushbutton", "id": "btn_rfid_deny", "top": -40, "left": -220, "attrs": { "color": "red", "label": "Tap RFID Invalid" } },
+    { "type": "wokwi-pushbutton", "id": "btn_slot1", "top": 230, "left": -120, "attrs": { "color": "blue", "label": "Slot 1" } },
+    { "type": "wokwi-pushbutton", "id": "btn_slot2", "top": 230, "left": -30, "attrs": { "color": "blue", "label": "Slot 2" } },
+    { "type": "wokwi-pushbutton", "id": "btn_slot3", "top": 230, "left": 60, "attrs": { "color": "blue", "label": "Slot 3" } },
+    { "type": "wokwi-pushbutton", "id": "btn_exit", "top": -110, "left": 240, "attrs": { "color": "yellow", "label": "Exit Gate" } },
+    { "type": "wokwi-resistor", "id": "r_pu35", "top": -40, "left": -120, "attrs": { "value": "10000" } },
+    { "type": "wokwi-resistor", "id": "r_pu34", "top": -110, "left": 140, "attrs": { "value": "10000" } }
+  ],
+  "connections": [
+    [ "lcd1:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "lcd1:VCC", "esp:5V", "red", [ "v0" ] ],
+    [ "lcd1:SDA", "esp:21", "blue", [ "v0" ] ],
+    [ "lcd1:SCL", "esp:22", "purple", [ "v0" ] ],
+
+    [ "servo_entry:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "servo_entry:V+", "esp:5V", "red", [ "v0" ] ],
+    [ "servo_entry:PWM", "esp:32", "orange", [ "v0" ] ],
+
+    [ "servo_exit:GND", "esp:GND.2", "black", [ "v0" ] ],
+    [ "servo_exit:V+", "esp:5V", "red", [ "v0" ] ],
+    [ "servo_exit:PWM", "esp:4", "orange", [ "v0" ] ],
+
+    [ "led_grn1:A", "esp:12", "green", [ "v0" ] ],
+    [ "led_grn1:C", "esp:GND.1", "black", [ "v0" ] ],
+    [ "led_red1:A", "esp:13", "red", [ "v0" ] ],
+    [ "led_red1:C", "esp:GND.1", "black", [ "v0" ] ],
+
+    [ "buz1:1", "esp:14", "gold", [ "v0" ] ],
+    [ "buz1:2", "esp:GND.1", "black", [ "v0" ] ],
+
+    [ "btn_rfid_ok:1.l", "esp:33", "green", [ "h0" ] ],
+    [ "btn_rfid_ok:2.l", "esp:GND.1", "black", [ "h0" ] ],
+    [ "btn_rfid_deny:1.l", "esp:35", "red", [ "h0" ] ],
+    [ "btn_rfid_deny:2.l", "esp:GND.1", "black", [ "h0" ] ],
+
+    [ "btn_slot1:1.l", "esp:27", "blue", [ "h0" ] ],
+    [ "btn_slot1:2.l", "esp:GND.1", "black", [ "h0" ] ],
+    [ "btn_slot2:1.l", "esp:26", "blue", [ "h0" ] ],
+    [ "btn_slot2:2.l", "esp:GND.1", "black", [ "h0" ] ],
+    [ "btn_slot3:1.l", "esp:25", "blue", [ "h0" ] ],
+    [ "btn_slot3:2.l", "esp:GND.1", "black", [ "h0" ] ],
+
+    [ "btn_exit:1.l", "esp:34", "yellow", [ "h0" ] ],
+    [ "btn_exit:2.l", "esp:GND.2", "black", [ "h0" ] ],
+    [ "r_pu35:1", "esp:3V3", "red", [ "v0" ] ],
+    [ "r_pu35:2", "esp:35", "red", [ "v0" ] ],
+    [ "r_pu34:1", "esp:3V3", "red", [ "v0" ] ],
+    [ "r_pu34:2", "esp:34", "yellow", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}

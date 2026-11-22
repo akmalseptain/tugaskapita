@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Presentasi Smart Parking IoT ESP32 + OTA</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(10px) scale(0.99); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .slide-enter {
+      animation: fadeSlideIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      .slide-page { display: block !important; page-break-after: always; }
+    }
+  </style>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased min-h-screen flex flex-col">
+
+  <!-- Top Navigation Bar (Canva-style bright header) -->
+  <header class="no-print sticky top-0 z-30 bg-[var(--card)]/90 backdrop-blur border-b border-[var(--border)] px-4 py-2.5 flex items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-400 to-teal-400 flex items-center justify-center text-white font-bold shadow-sm">
+        P
+      </div>
+      <div>
+        <h1 class="text-sm font-bold leading-tight">Smart Parking IoT ESP32 + OTA</h1>
+        <p class="text-xs text-[var(--muted-foreground)]">Presentasi Tugas Kapita Selekta • Berkelanjutan &amp; Siap Sidang</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <span id="slideCounter" class="text-xs font-mono px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-300 font-semibold">
+        1 / 9
+      </span>
+      <button onclick="toggleOverview()" class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-[var(--border)] hover:bg-sky-500/10 transition cursor-pointer">
+        Grid Slide
+      </button>
+      <button onclick="toggleFullscreen()" class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-[var(--border)] hover:bg-teal-500/10 transition cursor-pointer">
+        Fullscreen
+      </button>
+      <button onclick="window.print()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-sky-500 to-teal-500 text-white shadow-sm hover:opacity-90 transition cursor-pointer">
+        Export PDF
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar -->
+  <div class="no-print w-full h-1.5 bg-[var(--border)]">
+    <div id="progressBar" class="h-full bg-gradient-to-r from-sky-400 via-teal-400 to-amber-400 transition-all duration-300" style="width: 11.1%"></div>
+  </div>
+
+  <!-- Main Slide Stage -->
+  <main class="flex-1 flex items-center justify-center p-4 md:p-8">
+    <div id="slideStage" class="w-full max-w-5xl bg-[var(--card)] border border-[var(--border)] rounded-3xl shadow-xl overflow-hidden min-h-[540px] flex flex-col justify-between relative">
+      <!-- Dynamic Slide Content -->
+      <div id="slideContent" class="p-6 md:p-10 flex-1 flex flex-col justify-center slide-enter"></div>
+
+      <!-- Bottom Slide Controls -->
+      <footer class="no-print px-6 py-4 border-t border-[var(--border)] flex items-center justify-between bg-[var(--background)]/40">
+        <button id="prevBtn" onclick="prevSlide()" class="px-4 py-2 rounded-xl text-xs font-semibold border border-[var(--border)] hover:bg-sky-500/10 disabled:opacity-40 transition cursor-pointer">
+          ← Sebelumnya
+        </button>
+        <div id="dotNav" class="flex items-center gap-1.5"></div>
+        <button id="nextBtn" onclick="nextSlide()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-sky-500 to-teal-500 text-white shadow-sm hover:opacity-90 disabled:opacity-40 transition cursor-pointer">
+          Selanjutnya →
+        </button>
+      </footer>
+    </div>
+  </main>
+
+  <!-- Grid Overview Modal -->
+  <div id="overviewModal" class="no-print hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl max-w-4xl w-full p-6 max-h-[85vh] overflow-y-auto shadow-2xl">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border)]">
+        <h2 class="text-base font-bold">Pilih Slide Presentasi</h2>
+        <button onclick="toggleOverview()" class="px-3 py-1 rounded-lg text-xs font-semibold border border-[var(--border)] hover:bg-rose-500/10 cursor-pointer">Tutup ✕</button>
+      </div>
+      <div id="overviewGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
+    </div>
+  </div>
+
+  <script>
+    const slides = [
+      {
+        title: "Cover & Judul Proyek",
+        tag: "SLIDE 01 • PENGENALAN",
+        accent: "from-sky-400 to-teal-400",
+        render: () => `
+          <div class="grid md:grid-cols-5 gap-8 items-center">
+            <div class="md:col-span-3 space-y-5">
+              <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-sky-500/15 text-sky-600 dark:text-sky-300">
+                ✨ IoT Berkelanjutan • ESP32 + Over-The-Air (OTA)
+              </span>
+              <h2 class="text-3xl md:text-4xl font-extrabold leading-tight">
+                Smart Parking System Berbasis <span class="text-sky-500">ESP32</span> dengan <span class="text-teal-500">OTA Firmware Update</span>
+              </h2>
+              <p class="text-sm md:text-base text-[var(--muted-foreground)] leading-relaxed">
+                Sistem manajemen parkir otomatis menggunakan Dual RFID MFRC522, sensor deteksi slot, palang servo, dan dashboard web real-time yang dapat diperbarui secara nirkabel (<em>Over-The-Air</em>) tanpa kabel USB.
+              </p>
+              <div class="flex flex-wrap gap-2 pt-2">
+                <span class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-300">📡 AsyncElegantOTA</span>
+                <span class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">⚡ FreeRTOS Dual-Core</span>
+                <span class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-300">📐 KiCad &amp; Proteus</span>
+              </div>
+            </div>
+            <div class="md:col-span-2 bg-gradient-to-br from-sky-500/15 via-teal-500/15 to-amber-500/15 border border-sky-500/20 rounded-3xl p-6 space-y-4">
+              <div class="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-300">Ringkasan Sistem</div>
+              <div class="space-y-3 text-xs">
+                <div class="p-3 rounded-2xl bg-[var(--card)] border border-[var(--border)] flex justify-between">
+                  <span class="text-[var(--muted-foreground)]">Mikrokontroler</span>
+                  <span class="font-bold">ESP32 DevKit V1</span>
+                </div>
+                <div class="p-3 rounded-2xl bg-[var(--card)] border border-[var(--border)] flex justify-between">
+                  <span class="text-[var(--muted-foreground)]">Akses &amp; Gerbang</span>
+                  <span class="font-bold">2× RFID MFRC522 + Servo</span>
+                </div>
+                <div class="p-3 rounded-2xl bg-[var(--card)] border border-[var(--border)] flex justify-between">
+                  <span class="text-[var(--muted-foreground)]">Update Firmware</span>
+                  <span class="font-bold text-teal-500">Wi-Fi OTA (.bin)</span>
+                </div>
+                <div class="p-3 rounded-2xl bg-[var(--card)] border border-[var(--border)] flex justify-between">
+                  <span class="text-[var(--muted-foreground)]">Desain Skematik</span>
+                  <span class="font-bold">KiCad (Fedora) &amp; Proteus</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: "Mengapa Berkelanjutan & Wajib OTA?",
+        tag: "SLIDE 02 • JUSTIFIKASI AKADEMIK",
+        render: () => `
+          <div class="space-y-6">
+            <div>
+              <span class="text-xs font-bold text-rose-500 uppercase tracking-wider">Menjawab Pertanyaan Dosen</span>
+              <h2 class="text-2xl md:text-3xl font-extrabold mt-1">Mengapa Smart Parking Berkelanjutan &amp; Butuh OTA?</h2>
+            </div>
+            <div class="grid md:grid-cols-2 gap-4">
+              <div class="p-5 rounded-2xl bg-rose-500/10 border border-rose-500/25 space-y-2">
+                <div class="text-sm font-bold text-rose-600 dark:text-rose-300">❌ Proyek Statis (Contoh: Deteksi Jantung)</div>
+                <ul class="text-xs space-y-1.5 text-[var(--muted-foreground)] list-disc pl-4">
+                  <li>Logika pembacaan pulsa sensor cenderung tetap (tidak berubah-ubah).</li>
+                  <li>Alat bersifat personal/portabel, dekat dengan pengguna (mudah colok USB).</li>
+                  <li>Regulasi perangkat medis membatasi perubahan firmware jarak jauh sembarangan.</li>
+                </ul>
+              </div>
+              <div class="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-2">
+                <div class="text-sm font-bold text-emerald-600 dark:text-emerald-300">✅ Smart Parking (Berkelanjutan &amp; Multi-Node)</div>
+                <ul class="text-xs space-y-1.5 text-[var(--muted-foreground)] list-disc pl-4">
+                  <li><strong>Tersebar di Lapangan:</strong> Banyak tiang gerbang &amp; puluhan slot parkir outdoor/basement.</li>
+                  <li><strong>Aturan Bisnis Dinamis:</strong> Tarif parkir, kuota member, &amp; whitelist kartu terus berubah.</li>
+                  <li><strong>Ekspansi Fitur Jangka Panjang:</strong> Dari RFID lokal → integrasi QRIS/Cloud API tanpa bongkar alat.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div class="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/20">
+                <div class="text-lg font-extrabold text-sky-500">v1.0</div>
+                <div class="text-xs font-semibold mt-1">RFID + Slot Dasar + Web Lokal</div>
+              </div>
+              <div class="p-4 rounded-2xl bg-teal-500/10 border border-teal-500/20">
+                <div class="text-lg font-extrabold text-teal-500">v2.0 (OTA)</div>
+                <div class="text-xs font-semibold mt-1">Full-Slot Lock &amp; Timer Palang Dinamis</div>
+              </div>
+              <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                <div class="text-lg font-extrabold text-amber-500">v3.0 (OTA)</div>
+                <div class="text-xs font-semibold mt-1">Integrasi Cloud MQTT &amp; Tarif QRIS</div>
+              </div>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: "Referensi Jurnal Ilmiah",
+        tag: "SLIDE 03 • LANDASAN JURNAL",
+        render: () => `
+          <div class="space-y-5">
+            <div>
+              <span class="text-xs font-bold text-sky-500 uppercase tracking-wider">Tinjauan Pustaka</span>
+              <h2 class="text-2xl md:text-3xl font-extrabold mt-1">Jurnal Ilmiah &amp; Sumber Referensi</h2>
+            </div>
+            <div class="grid md:grid-cols-2 gap-4">
+              <div class="p-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] space-y-2">
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-500/15 text-sky-600 dark:text-sky-300">Jurnal Utama Hardware</span>
+                <h3 class="text-sm font-bold">Cyberpark: An-IoT based Automated Parking Management and Monitoring System using RFID and ESP32</h3>
+                <p class="text-xs text-[var(--muted-foreground)]">Journal of Computing Research and Innovation, Vol. 10 No. 2 (2025). Membahas arsitektur ESP32, autentikasi RFID, sensor slot parkir, servo palang, LCD 16×2, dan monitoring IoT.</p>
+              </div>
+              <div class="p-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] space-y-2">
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-500/15 text-teal-600 dark:text-teal-300">Jurnal Pendukung OTA</span>
+                <h3 class="text-sm font-bold">Program Modification On The NodeMCU Using The Over The Air (OTA) Method</h3>
+                <p class="text-xs text-[var(--muted-foreground)]">Jurnal TELECTRICAL, Universitas Tanjungpura (2024). Membahas mekanisme update firmware nirkabel berbasis Web Server (<code>AsyncElegantOTA</code>) menggunakan unggahan file biner <code>.bin</code>.</p>
+              </div>
+            </div>
+            <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs flex items-center justify-between gap-4">
+              <div>
+                <strong>Repositori Implementasi &amp; Proteus:</strong> <code>Muhaiminul-Hasan/RFID-based-Smart-Parking-System-using-ESP32</code> (memuat <code>SPS_24.ino</code>, <code>Basic_OTA</code>, dan <code>SPS proteus</code>).
+              </div>
+              <span class="px-3 py-1 rounded-lg bg-amber-500 text-white font-bold shrink-0">Terverifikasi</span>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: "Arsitektur Sistem & Alur OTA",
+        tag: "SLIDE 04 • ARSITEKTUR SISTEM",
+        render: () => `
+          <div class="space-y-5">
+            <div>
+              <span class="text-xs font-bold text-teal-500 uppercase tracking-wider">Desain Perangkat Lunak &amp; Keras</span>
+              <h2 class="text-2xl md:text-3xl font-extrabold mt-1">Arsitektur Dual-Core ESP32 &amp; Alur Kerja OTA</h2>
+            </div>
+            <div class="grid md:grid-cols-3 gap-4 text-xs">
+              <div class="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/25 space-y-2">
+                <div class="font-bold text-sm text-sky-600 dark:text-sky-300">1. Layer Sensor &amp; Input</div>
+                <p class="text-[var(--muted-foreground)]">• 2× RFID MFRC522 (SPI) untuk gerbang masuk &amp; keluar.<br>• 2× IR Sensor deteksi kendaraan di gerbang.<br>• 3× Sensor Slot Parkir (GPIO 27, 26, 25).</p>
+              </div>
+              <div class="p-4 rounded-2xl bg-teal-500/10 border border-teal-500/25 space-y-2">
+                <div class="font-bold text-sm text-teal-600 dark:text-teal-300">2. Pemrosesan ESP32</div>
+                <p class="text-[var(--muted-foreground)]">• <strong>Core 0/1 FreeRTOS:</strong> Task gate &amp; pembacaan sensor paralel.<br>• <strong>AsyncWebServer:</strong> Menyajikan dashboard status slot real-time di Port 80.</p>
+              </div>
+              <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-2">
+                <div class="font-bold text-sm text-amber-600 dark:text-amber-300">3. Aktuator &amp; OTA</div>
+                <p class="text-[var(--muted-foreground)]">• 2× Servo SG90 (Palang), LCD 16×2 I2C, LED Merah/Hijau, Buzzer.<br>• <strong>Endpoint <code>/update</code>:</strong> Upload file <code>.bin</code> baru via Wi-Fi → auto-reboot.</p>
+              </div>
+            </div>
+            <div class="p-4 rounded-2xl bg-[var(--background)] border border-[var(--border)]">
+              <div class="text-xs font-bold mb-2">Alur Pembaruan Firmware Over-The-Air (OTA):</div>
+              <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                <span class="px-3 py-1.5 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-300">1. Compile Sketch → Export .bin</span>
+                <span>→</span>
+                <span class="px-3 py-1.5 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-300">2. Buka http://&lt;IP-ESP32&gt;/update</span>
+                <span>→</span>
+                <span class="px-3 py-1.5 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-300">3. Upload &amp; Verifikasi Flash</span>
+                <span>→</span>
+                <span class="px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">4. ESP32 Reboot ke Firmware v2.0</span>
+              </div>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: "Pemetaan Pinout ESP32",
+        tag: "SLIDE 05 • WIRING & PINOUT",
+        render: () => `
+          <div class="space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span class="text-xs font-bold text-sky-500 uppercase tracking-wider">Konfigurasi Hardware</span>
+                <h2 class="text-2xl font-extrabold mt-0.5">Pemetaan Pin GPIO ESP32 DevKit V1</h2>
+              </div>
+              <div class="flex gap-1.5 text-xs">
+                <button onclick="filterPins('all')" class="px-2.5 py-1 rounded-lg bg-sky-500 text-white font-semibold cursor-pointer">Semua</button>
+                <button onclick="filterPins('entry')" class="px-2.5 py-1 rounded-lg border border-[var(--border)] hover:bg-sky-500/10 font-semibold cursor-pointer">Entry</button>
+                <button onclick="filterPins('exit')" class="px-2.5 py-1 rounded-lg border border-[var(--border)] hover:bg-sky-500/10 font-semibold cursor-pointer">Exit</button>
+                <button onclick="filterPins('bus')" class="px-2.5 py-1 rounded-lg border border-[var(--border)] hover:bg-sky-500/10 font-semibold cursor-pointer">SPI/I2C/Slot</button>
+              </div>
+            </div>
+            <div class="overflow-x-auto rounded-2xl border border-[var(--border)]">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-[var(--background)] text-[var(--muted-foreground)]">
+                  <tr>
+                    <th class="p-2.5">Kategori</th>
+                    <th class="p-2.5">Komponen</th>
+                    <th class="p-2.5">Pin ESP32</th>
+                    <th class="p-2.5">Fungsi</th>
+                  </tr>
+                </thead>
+                <tbody id="pinTableBody" class="divide-y divide-[var(--border)]"></tbody>
+              </table>
+            </div>
+          </div>
+        `,
+        onMount: () => filterPins('all')
+      },
+      {
+        title: "Simulasi Interaktif Smart Parking & OTA",
+        tag: "SLIDE 06 • DEMO INTERAKTIF",
+        render: () => `
+          <div class="space-y-5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span class="text-xs font-bold text-emerald-500 uppercase tracking-wider">Simulasi Langsung</span>
+                <h2 class="text-2xl font-extrabold mt-0.5">Demo Operasi Parkir &amp; Update OTA</h2>
+              </div>
+              <span id="fwBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-sky-500/15 text-sky-600 dark:text-sky-300">
+                Firmware Aktif: v1.0 (Dasar)
+              </span>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-5">
+              <!-- Parking Simulator -->
+              <div class="p-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] space-y-4">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Status Slot Parkir (Klik untuk Toggle)</span>
+                  <span id="lcdText" class="px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-300 font-mono text-xs">LCD: Ready</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2.5">
+                  <button onclick="toggleSlot(0)" id="slotBtn0" class="p-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 text-center cursor-pointer transition">
+                    <div class="text-xs font-bold">SLOT 1</div>
+                    <div class="text-xs mt-1 font-semibold text-emerald-600 dark:text-emerald-300">KOSONG</div>
+                  </button>
+                  <button onclick="toggleSlot(1)" id="slotBtn1" class="p-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 text-center cursor-pointer transition">
+                    <div class="text-xs font-bold">SLOT 2</div>
+                    <div class="text-xs mt-1 font-semibold text-emerald-600 dark:text-emerald-300">KOSONG</div>
+                  </button>
+                  <button onclick="toggleSlot(2)" id="slotBtn2" class="p-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 text-center cursor-pointer transition">
+                    <div class="text-xs font-bold">SLOT 3</div>
+                    <div class="text-xs mt-1 font-semibold text-emerald-600 dark:text-emerald-300">KOSONG</div>
+                  </button>
+                </div>
+                <div class="flex gap-2">
+                  <button onclick="tapRFID(true)" class="flex-1 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:opacity-90 cursor-pointer">💳 Tap RFID Valid</button>
+                  <button onclick="tapRFID(false)" class="flex-1 py-2 rounded-xl text-xs font-bold bg-rose-500 text-white hover:opacity-90 cursor-pointer">🚫 Tap RFID Ditolak</button>
+                </div>
+              </div>
+
+              <!-- OTA Simulator -->
+              <div class="p-5 rounded-2xl bg-[var(--background)] border border-[var(--border)] space-y-4">
+                <div class="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Panel AsyncElegantOTA (http://192.168.1.50/update)</div>
+                <div class="p-3 rounded-xl bg-[var(--card)] border border-[var(--border)] text-xs space-y-1">
+                  <div><strong>File Target:</strong> <code>SmartParking_v2.0_FullLock.ino.bin</code></div>
+                  <div><strong>Fitur Baru v2.0:</strong> Kunci palang otomatis jika 3 slot penuh + log durasi parkir.</div>
+                </div>
+                <div class="w-full h-3 rounded-full bg-[var(--border)] overflow-hidden">
+                  <div id="otaBar" class="h-full bg-gradient-to-r from-sky-500 to-emerald-500 transition-all duration-150" style="width: 0%"></div>
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <span id="otaStatus" class="text-xs text-[var(--muted-foreground)]">Siap melakukan update nirkabel...</span>
+                  <button onclick="runOTA()" class="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-sky-500 to-teal-500 text-white hover:opacity-90 cursor-pointer">
+                    🚀 Flash OTA v2.0
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: "Skematik & Simulasi: KiCad, Wokwi & Proteus",
+        tag: "SLIDE 07 • KICAD, WOKWI & PROTEUS",
+        render: () => `
+          <div class="space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span class="text-xs font-bold text-amber-500 uppercase tracking-wider">Bukti Desain &amp; Uji Rangkaian</span>
+                <h2 class="text-2xl font-extrabold mt-0.5">Dokumentasi KiCad, Wokwi &amp; Proteus</h2>
+              </div>
+              <div class="flex gap-1.5 text-xs">
+                <button id="tabKicad" onclick="switchPlatform('kicad')" class="px-3 py-1.5 rounded-xl bg-sky-500 text-white font-bold cursor-pointer transition">📐 KiCad (Fedora)</button>
+                <button id="tabWokwi" onclick="switchPlatform('wokwi')" class="px-3 py-1.5 rounded-xl border border-[var(--border)] hover:bg-teal-500/10 font-bold cursor-pointer transition">⚡ Wokwi (Live)</button>
+                <button id="tabProteus" onclick="switchPlatform('proteus')" class="px-3 py-1.5 rounded-xl border border-[var(--border)] hover:bg-amber-500/10 font-bold cursor-pointer transition">🧩 Proteus (.pdsprj)</button>
+              </div>
+            </div>
+            <div id="platformPanel" class="rounded-2xl bg-[var(--background)] border border-[var(--border)] p-4"></div>
+          </div>
+        `,
+        onMount: () => switchPlatform('kicad')
+      },
+      {
+        title: "Dokumentasi Foto & Video Proyek",
+        tag: "SLIDE 08 • GALERI FOTO & VIDEO",
+        render: () => `
+          <div class="space-y-4">
+            <div>
+              <span class="text-xs font-bold text-rose-500 uppercase tracking-wider">Klik Foto untuk Memperbesar</span>
+              <h2 class="text-2xl font-extrabold mt-0.5">Dokumentasi Foto Hardware &amp; Rekaman Video</h2>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+              <div onclick="openZoom('../docs/images/hardware_wiring.jpg', 'Perakitan &amp; Wiring Hardware')" class="group cursor-pointer rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--background)] hover:border-sky-500 transition">
+                <img src="../docs/images/hardware_wiring.jpg" alt="Wiring" class="w-full h-28 object-cover group-hover:scale-105 transition" />
+                <div class="p-2.5 font-bold">1. Perakitan &amp; Wiring</div>
+              </div>
+              <div onclick="openZoom('../docs/images/hardware_final_1.jpg', 'Prototipe Final Keseluruhan')" class="group cursor-pointer rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--background)] hover:border-sky-500 transition">
+                <img src="../docs/images/hardware_final_1.jpg" alt="Final 1" class="w-full h-28 object-cover group-hover:scale-105 transition" />
+                <div class="p-2.5 font-bold">2. Prototipe Final 1</div>
+              </div>
+              <div onclick="openZoom('../docs/images/hardware_final_2.jpg', 'Detail Gerbang &amp; RFID')" class="group cursor-pointer rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--background)] hover:border-sky-500 transition">
+                <img src="../docs/images/hardware_final_2.jpg" alt="Final 2" class="w-full h-28 object-cover group-hover:scale-105 transition" />
+                <div class="p-2.5 font-bold">3. Gerbang &amp; RFID</div>
+              </div>
+              <div onclick="openZoom('../docs/images/ota_dashboard_preview.jpg', 'Dashboard Monitoring &amp; OTA')" class="group cursor-pointer rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--background)] hover:border-sky-500 transition">
+                <img src="../docs/images/ota_dashboard_preview.jpg" alt="Dashboard OTA" class="w-full h-28 object-cover group-hover:scale-105 transition" />
+                <div class="p-2.5 font-bold">4. Dashboard &amp; OTA</div>
+              </div>
+            </div>
+            <div class="grid md:grid-cols-3 gap-2.5 text-xs">
+              <div class="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20">🎬 <strong>Video Wokwi Asli:</strong> <code>SmartParking_Wokwi_Real_Simulation.mp4</code></div>
+              <div class="p-3 rounded-xl bg-teal-500/10 border border-teal-500/20">🎥 <strong>Video Demo Interaktif:</strong> <code>SmartParking_OTA_Live_Simulation_Demo.mp4</code></div>
+              <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">📽️ <strong>Video Presentasi HD:</strong> <code>SmartParking_IoT_OTA_Presentation.mp4</code></div>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: "Kesimpulan & Penutup",
+        tag: "SLIDE 09 • KESIMPULAN",
+        render: () => `
+          <div class="text-center max-w-2xl mx-auto space-y-5">
+            <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">
+              ✅ Siap Bimbingan &amp; Presentasi
+            </span>
+            <h2 class="text-3xl font-extrabold">Kesimpulan Proyek</h2>
+            <p class="text-sm text-[var(--muted-foreground)] leading-relaxed">
+              <strong>Smart Parking System berbasis ESP32 dengan OTA</strong> menjawab kebutuhan sistem IoT yang <strong>berkelanjutan</strong>: perangkat tersebar di lapangan, aturan tarif &amp; akses terus berkembang, dan pemeliharaan firmware dapat dilakukan jarak jauh tanpa membongkar perangkat keras.
+            </p>
+            <div class="grid grid-cols-3 gap-3 text-xs pt-2">
+              <div class="p-3 rounded-2xl bg-[var(--background)] border border-[var(--border)]">
+                <div class="font-bold text-sky-500">Jurnal Tervalidasi</div>
+                <div class="text-[var(--muted-foreground)] mt-0.5">Cyberpark &amp; TELECTRICAL</div>
+              </div>
+              <div class="p-3 rounded-2xl bg-[var(--background)] border border-[var(--border)]">
+                <div class="font-bold text-teal-500">Skematik Lengkap</div>
+                <div class="text-[var(--muted-foreground)] mt-0.5">KiCad Fedora &amp; Proteus</div>
+              </div>
+              <div class="p-3 rounded-2xl bg-[var(--background)] border border-[var(--border)]">
+                <div class="font-bold text-amber-500">Dokumentasi Penuh</div>
+                <div class="text-[var(--muted-foreground)] mt-0.5">README, Foto &amp; Video</div>
+              </div>
+            </div>
+          </div>
+        `
+      }
+    ];
+
+    const pinData = [
+      { cat: "bus", label: "SPI Bus (RFID 1 & 2)", comp: "MFRC522 MOSI / MISO / SCK", pin: "GPIO 23, 19, 18", fn: "Komunikasi data kartu RFID" },
+      { cat: "bus", label: "I2C Bus", comp: "LCD 16×2 I2C (0x27)", pin: "GPIO 21 (SDA), 22 (SCL)", fn: "Tampilan status akses & slot" },
+      { cat: "entry", label: "Entry Gate", comp: "RFID 1 (SS / RST)", pin: "GPIO 17 / GPIO 33", fn: "Autentikasi kartu masuk" },
+      { cat: "entry", label: "Entry Gate", comp: "IR Sensor + Servo 1", pin: "GPIO 35 / GPIO 32", fn: "Deteksi mobil & buka palang masuk" },
+      { cat: "entry", label: "Entry Gate", comp: "LED Hijau/Merah + Buzzer", pin: "GPIO 12, 13, 14", fn: "Indikator akses masuk" },
+      { cat: "exit", label: "Exit Gate", comp: "RFID 2 (SS / RST)", pin: "GPIO 5 / GPIO 16", fn: "Autentikasi kartu keluar" },
+      { cat: "exit", label: "Exit Gate", comp: "IR Sensor + Servo 2", pin: "GPIO 34 / GPIO 4", fn: "Deteksi mobil & buka palang keluar" },
+      { cat: "exit", label: "Exit Gate", comp: "LED Hijau/Merah + Buzzer", pin: "GPIO 2, 0, 15", fn: "Indikator akses keluar" },
+      { cat: "bus", label: "Parking Slots", comp: "Sensor Slot 1, 2, 3", pin: "GPIO 27, 26, 25", fn: "Deteksi ketersediaan 3 slot parkir" }
+    ];
+
+    let currentSlide = 0;
+    let slots = [false, false, false];
+    let fwVersion = "v1.0";
+
+    function renderSlide() {
+      const s = slides[currentSlide];
+      const el = document.getElementById("slideContent");
+      el.classList.remove("slide-enter");
+      void el.offsetWidth;
+      el.classList.add("slide-enter");
+      el.innerHTML = `<div class="mb-3 text-xs font-bold tracking-wider text-[var(--muted-foreground)]">${s.tag}</div>` + s.render();
+      if (s.onMount) s.onMount();
+
+      document.getElementById("slideCounter").textContent = `${currentSlide + 1} / ${slides.length}`;
+      document.getElementById("progressBar").style.width = `${((currentSlide + 1) / slides.length) * 100}%`;
+      document.getElementById("prevBtn").disabled = currentSlide === 0;
+      document.getElementById("nextBtn").disabled = currentSlide === slides.length - 1;
+
+      const dotNav = document.getElementById("dotNav");
+      dotNav.innerHTML = slides.map((_, i) => `
+        <button onclick="goToSlide(${i})" class="h-2 rounded-full transition-all cursor-pointer ${i === currentSlide ? 'w-6 bg-sky-500' : 'w-2 bg-[var(--border)] hover:bg-sky-400'}"></button>
+      `).join("");
+    }
+
+    function nextSlide() { if (currentSlide < slides.length - 1) { currentSlide++; renderSlide(); } }
+    function prevSlide() { if (currentSlide > 0) { currentSlide--; renderSlide(); } }
+    function goToSlide(i) { currentSlide = i; renderSlide(); }
+
+    function toggleOverview() {
+      const modal = document.getElementById("overviewModal");
+      const grid = document.getElementById("overviewGrid");
+      if (modal.classList.contains("hidden")) {
+        grid.innerHTML = slides.map((s, i) => `
+          <button onclick="goToSlide(${i}); toggleOverview();" class="text-left p-4 rounded-xl border ${i === currentSlide ? 'border-sky-500 bg-sky-500/10' : 'border-[var(--border)] hover:bg-sky-500/5'} transition cursor-pointer">
+            <div class="text-xs font-bold text-sky-500">${s.tag}</div>
+            <div class="text-sm font-bold mt-1">${s.title}</div>
+          </button>
+        `).join("");
+        modal.classList.remove("hidden");
+      } else {
+        modal.classList.add("hidden");
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+
+    function filterPins(cat) {
+      const tbody = document.getElementById("pinTableBody");
+      if (!tbody) return;
+      const rows = cat === "all" ? pinData : pinData.filter(p => p.cat === cat);
+      tbody.innerHTML = rows.map(r => `
+        <tr class="hover:bg-sky-500/5">
+          <td class="p-2.5 font-semibold">${r.label}</td>
+          <td class="p-2.5">${r.comp}</td>
+          <td class="p-2.5 font-mono text-sky-600 dark:text-sky-300">${r.pin}</td>
+          <td class="p-2.5 text-[var(--muted-foreground)]">${r.fn}</td>
+        </tr>
+      `).join("");
+    }
+
+    function toggleSlot(idx) {
+      slots[idx] = !slots[idx];
+      const btn = document.getElementById(`slotBtn${idx}`);
+      if (!btn) return;
+      if (slots[idx]) {
+        btn.className = "p-3 rounded-xl border-2 border-rose-500 bg-rose-500/15 text-center cursor-pointer transition";
+        btn.innerHTML = `<div class="text-xs font-bold">SLOT ${idx + 1}</div><div class="text-xs mt-1 font-semibold text-rose-600 dark:text-rose-300">TERISI</div>`;
+      } else {
+        btn.className = "p-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 text-center cursor-pointer transition";
+        btn.innerHTML = `<div class="text-xs font-bold">SLOT ${idx + 1}</div><div class="text-xs mt-1 font-semibold text-emerald-600 dark:text-emerald-300">KOSONG</div>`;
+      }
+    }
+
+    function tapRFID(valid) {
+      const lcd = document.getElementById("lcdText");
+      if (!lcd) return;
+      const full = slots.every(Boolean);
+      if (fwVersion === "v2.0" && full && valid) {
+        lcd.textContent = "LCD: Parkir Penuh (v2.0 Lock!)";
+        lcd.className = "px-2.5 py-1 rounded-lg bg-amber-950 text-amber-300 font-mono text-xs";
+      } else if (valid) {
+        lcd.textContent = "LCD: Access Granted (Servo Buka)";
+        lcd.className = "px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-300 font-mono text-xs";
+      } else {
+        lcd.textContent = "LCD: Access Denied (Buzzer ON)";
+        lcd.className = "px-2.5 py-1 rounded-lg bg-rose-950 text-rose-300 font-mono text-xs";
+      }
+    }
+
+    function runOTA() {
+      const bar = document.getElementById("otaBar");
+      const status = document.getElementById("otaStatus");
+      const badge = document.getElementById("fwBadge");
+      if (!bar || !status) return;
+      let pct = 0;
+      status.textContent = "Mengunggah .bin via Wi-Fi...";
+      const timer = setInterval(() => {
+        pct += 10;
+        bar.style.width = pct + "%";
+        if (pct >= 100) {
+          clearInterval(timer);
+          fwVersion = "v2.0";
+          status.textContent = "✅ OTA Sukses! ESP32 reboot ke v2.0.";
+          badge.textContent = "Firmware Aktif: v2.0 (Full-Slot Lock)";
+          badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-300";
+        }
+      }, 120);
+    }
+
+    function switchPlatform(mode) {
+      const panel = document.getElementById("platformPanel");
+      if (!panel) return;
+      const tabs = { kicad: "tabKicad", wokwi: "tabWokwi", proteus: "tabProteus" };
+      Object.entries(tabs).forEach(([k, id]) => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.className = k === mode
+          ? "px-3 py-1.5 rounded-xl bg-sky-500 text-white font-bold cursor-pointer transition"
+          : "px-3 py-1.5 rounded-xl border border-[var(--border)] hover:bg-sky-500/10 font-bold cursor-pointer transition";
+      });
+
+      if (mode === "kicad") {
+        panel.innerHTML = `
+          <div class="grid md:grid-cols-5 gap-4 items-center text-xs">
+            <div class="md:col-span-3 cursor-pointer" onclick="openZoom('../docs/images/kicad_schematic.png', 'Skematik KiCad 7 (Fedora Linux)')">
+              <img src="../docs/images/kicad_schematic.png" alt="KiCad Schematic" class="w-full h-56 object-contain bg-white rounded-xl border border-[var(--border)] p-1 hover:opacity-95 transition" />
+              <div class="text-center text-[var(--muted-foreground)] mt-1">🔍 Klik gambar untuk memperbesar skematik KiCad</div>
+            </div>
+            <div class="md:col-span-2 space-y-2">
+              <div class="text-sm font-bold text-sky-600 dark:text-sky-300">🐧 KiCad 7/8 di Fedora Linux</div>
+              <p class="text-[var(--muted-foreground)]">File asli: <code>hardware/kicad/SmartParking_ESP32_OTA.kicad_sch</code></p>
+              <ul class="list-disc pl-4 space-y-1 text-[var(--muted-foreground)]">
+                <li>Global net label rapi: <code>SPI_MOSI</code>, <code>I2C_SDA</code>, <code>RFID1_SS</code>, <code>SERVO1_PWM</code>.</li>
+                <li>Siap dibuka di Fedora: <code>kicad SmartParking_ESP32_OTA.kicad_pro</code>.</li>
+                <li>Siap lanjut ke PCB layout.</li>
+              </ul>
+            </div>
+          </div>
+        `;
+      } else if (mode === "wokwi") {
+        panel.innerHTML = `
+          <div class="grid md:grid-cols-5 gap-4 items-center text-xs">
+            <div class="md:col-span-3 cursor-pointer" onclick="openZoom('../docs/images/wokwi_simulation_running.png', 'Simulasi Asli Berjalan di Wokwi.com')">
+              <img src="../docs/images/wokwi_simulation_running.png" alt="Wokwi Simulation" class="w-full h-56 object-contain bg-slate-900 rounded-xl border border-[var(--border)] p-1 hover:opacity-95 transition" />
+              <div class="text-center text-[var(--muted-foreground)] mt-1">🔍 Klik gambar untuk memperbesar simulasi Wokwi</div>
+            </div>
+            <div class="md:col-span-2 space-y-2">
+              <div class="text-sm font-bold text-teal-600 dark:text-teal-300">⚡ Simulasi Real-Time Wokwi.com</div>
+              <p class="text-[var(--muted-foreground)]">File: <code>simulation/wokwi/diagram.json</code> &amp; <code>sketch.ino</code></p>
+              <ul class="list-disc pl-4 space-y-1 text-[var(--muted-foreground)]">
+                <li><strong>Terbukti Compile &amp; Boot:</strong> ESP32 + <code>LiquidCrystal I2C</code> + <code>ESP32Servo</code>.</li>
+                <li>LCD menampilkan <code>FW:v1.0 SmartPrk / Free Slot: 3/3</code>.</li>
+                <li>Tersedia rekaman video asli: <code>SmartParking_Wokwi_Real_Simulation.mp4</code>.</li>
+              </ul>
+            </div>
+          </div>
+        `;
+      } else {
+        panel.innerHTML = `
+          <div class="grid md:grid-cols-2 gap-4 text-xs p-2">
+            <div class="space-y-2">
+              <div class="text-sm font-bold text-amber-600 dark:text-amber-300">🧩 Proteus 8 Professional (.pdsprj)</div>
+              <p class="text-[var(--muted-foreground)]">File proyek: <code>hardware/proteus/SPS_circuit_diagram.pdsprj</code></p>
+              <ul class="list-disc pl-4 space-y-1 text-[var(--muted-foreground)]">
+                <li>Berisi rangkaian lengkap sensor IR, servo gerbang, LED indikator, buzzer, dan LCD I2C.</li>
+                <li>Cocok untuk validasi sinyal GPIO &amp; rangkaian elektronika di Windows/Proteus 8.</li>
+              </ul>
+            </div>
+            <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-1.5">
+              <div class="font-bold text-amber-700 dark:text-amber-300">💡 Mengapa Dikombinasikan dengan KiCad &amp; Wokwi?</div>
+              <p class="text-[var(--muted-foreground)]">Proteus tidak mendukung eksekusi stack Wi-Fi ESP32 secara langsung dan memerlukan Windows. Dengan <strong>KiCad</strong> (Fedora) + <strong>Wokwi</strong> (Browser) + <strong>Proteus</strong> (`.pdsprj`), desain skematik dan pengujian firmware/OTA sama-sama tervalidasi.</p>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function openZoom(src, title) {
+      let modal = document.getElementById("zoomModal");
+      if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "zoomModal";
+        modal.className = "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4";
+        modal.onclick = () => modal.classList.add("hidden");
+        modal.innerHTML = `
+          <div class="max-w-5xl w-full bg-[var(--card)] rounded-2xl p-4 space-y-2" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center">
+              <span id="zoomTitle" class="text-sm font-bold"></span>
+              <button onclick="document.getElementById('zoomModal').classList.add('hidden')" class="px-3 py-1 rounded-lg text-xs font-bold border border-[var(--border)] cursor-pointer">Tutup ✕</button>
+            </div>
+            <img id="zoomImg" src="" class="w-full max-h-[78vh] object-contain rounded-xl bg-white" />
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+      document.getElementById("zoomTitle").textContent = title;
+      document.getElementById("zoomImg").src = src;
+      modal.classList.remove("hidden");
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight") nextSlide();
+      if (e.key === "ArrowLeft") prevSlide();
+      if (e.key === "Escape") {
+        const zm = document.getElementById("zoomModal");
+        if (zm) zm.classList.add("hidden");
+      }
+    });
+
+    renderSlide();
+  </script>
+</body>
+</html>
